@@ -1,0 +1,8 @@
+# GPT-6 Sol — Argolink
+
+- Model: gpt-6-sol
+- Intent: AI content workflow API integration
+- Model page: https://argolink.io/gh-ai-content-workflow-api
+- API docs: https://argolink.io/gh-unified-api-docs
+- Examples: examples/request.sh, examples/client.py
+- Contract: docs/model-contract.md
