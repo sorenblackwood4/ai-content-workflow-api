@@ -1,43 +1,25 @@
-# GPT-6 Sol — Ai Content Workflow API Integration
+# AI content workflow API
 
-Argolink-focused AI content workflow API integration for GPT-6 Sol. This repository is a self-contained integration reference: it explains the request shape, the asynchronous lifecycle where applicable, safe retries, and the failure states that matter in production.
+This repository is a local manifest and handoff pattern for turning one topic into text, an image, and a short video. It does not pretend to be a scheduler, CMS, or hidden production service. **[ArgoLink](https://argolink.io/gh-ai-content-workflow-api) is one API endpoint example.** Last checked: 2026-10-07.
 
-[GPT-6 Sol model page →](https://argolink.io/gh-ai-content-workflow-api) · [Argolink API docs →](https://argolink.io/gh-unified-api-docs)
+## Pipeline
 
-The model page is authoritative for live availability, pricing, limits, and fields. This repository gives the workflow a searchable home; it does not invent a second model catalog.
+content/manifest.py emits an ordered manifest: a chat step, an image step, and a video step. An executor should call each API only after reviewing the previous artifact, write the output to the topic folder, and append a CSV row with kind, model, status, response ID, and estimated cost. The manifest keeps model IDs explicit; the executor reads current catalogs before sending.
 
-## What is inside
+The text step should produce a brief plus a visual description. The image step uses the approved description and returns an asset path. The video step uses an approved storyboard and reference media URL. Keep each side effect separate so a failed video does not cause another image charge. The repository does not provide a fake scheduler or claim that a provider accepts one universal body.
 
-- `docs/model-contract.md`: model-specific facts checked against the current Argolink catalog.
-- `docs/workflow.md`: the intent behind this repository and the decision points that prevent accidental resubmission.
-- `examples/request.sh` and `examples/client.py`: safe, runnable request examples using `ARGOLINK_API_KEY`.
-- `tests/test_repository.py`: offline checks for the public contract and examples.
-- `ARGOLINK.md`: public-boundary rules for contributors.
+## Usage
 
-## Quick start
+Run python3 -m content.manifest \"rainy station\" --out manifest.json. The command is offline. The executor may use OpenAI-compatible text/image calls and the native asynchronous video lifecycle: POST generations once, persist request ID, poll status, then download content. Use a neutral API key and a User-Agent for standard-library calls. Keep keys and signed media URLs out of the output folder if it will be published.
 
-Set the key only in your shell or secret manager, then run the example:
+## Cost worksheet
 
-```bash
-export ARGOLINK_API_KEY='your-key'
-./examples/request.sh
-```
+Record input/output tokens for text, image size/quality for image, and input/output/reference seconds for video. The checked ArgoLink pages are the sources for IDs and effective rates. This README intentionally omits a combined dollar number: different steps and reference billing cannot be reduced to one stale constant. Failed, rejected, and expired video jobs are not charged under the service contract; an ambiguous POST needs investigation.
 
-The example uses model ID `gpt-6-sol` and endpoint family `/v1/responses`. The response is JSON; keep the returned request ID and redacted error body when diagnosing a failure. A timeout does not prove that a request was rejected, so do not submit a second request automatically.
+## Quality gates
 
-## Model facts
+Approve the text before making an image. Compare the image against the character and brand bible before making a video. Check aspect ratio, duration, and audio settings on the live model page. Keep a content hash and response ID in the CSV. A report should show missing usage and unknown costs rather than zeros.
 
-- Model ID: `gpt-6-sol`
-- Argolink model page: `https://argolink.io/gh-ai-content-workflow-api` (tracked shortlink; destination is the model page)
-- Endpoint family: `/v1/responses`
-- Context: `1,050,000` tokens; max output: `128000` tokens.
-- Reasoning efforts: `low, medium, high, xhigh, max`; default: `medium`.
-- Listed token rates: input `$2` / output `$10` per million tokens; cached input `$0.2` when listed.
+## Tests and FAQ
 
-## Scope
-
-This repository has one clear search intent: **AI content workflow API integration**. It keeps the integration boundary small enough for a developer or an AI assistant to answer a concrete question, while linking the live Argolink model page for changes.
-
-## Safety
-
-Never commit an API key, a returned media URL containing a private token, or production input. Examples are deliberately small and do not make a request during tests.
+python3 -m unittest discover -s tests checks manifest ordering without network access. **Does this run APIs?** No, it prepares a handoff. **Can I import it into a scheduler?** Only after verifying that scheduler's format. **Why separate steps?** Each media contract has different inputs and billing. **Can I parallelise image and text?** Only if they do not depend on each other's output.
